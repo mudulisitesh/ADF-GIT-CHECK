@@ -1,0 +1,9 @@
+{
+	"name": "prod-sitesh",
+	"location": "eastus",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "7c0a9e1d-ea95-43d1-bbeb-19e4a8b42639",
+		"tenantId": "eb51530d-ba4a-40e2-9559-4498f1a6c06c"
+	}
+}
