@@ -1,0 +1,126 @@
+name: ADF CI/CD Promotion
+
+on:
+  push:
+    branches:
+      - dev
+    paths:
+      - '**/*.json'  # Trigger on JSON file changes (ADF publishes as JSON)
+
+jobs:
+  dev-to-uat:
+    name: Create PR from Dev to UAT
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Fetch all history for all branches
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Setup Git Config
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+      
+      - name: Create PR from Dev to UAT
+        id: create-pr-uat
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: uat
+          branch: auto-pr-dev-to-uat
+          title: "Promote: Dev to UAT"
+          body: |
+            # Automatic Promotion: Dev to UAT
+            
+            This PR was automatically created by the CI/CD pipeline to promote changes from Dev ADF to UAT ADF.
+            
+            ## Changes included
+            
+            - ADF resources published from Dev environment
+            
+            ## After merging
+            
+            After this PR is approved and merged, changes will be available in the UAT ADF instance.
+            You may need to click "Import Changes" in the UAT ADF portal to see the latest changes.
+          labels: automated-pr, promotion, dev-to-uat
+          draft: false
+      
+      - name: PR Details
+        if: steps.create-pr-uat.outputs.pull-request-number
+        run: |
+          echo "Created PR from Dev to UAT: ${{ steps.create-pr-uat.outputs.pull-request-url }}"
+
+  uat-to-prod:
+    name: Create PR from UAT to Prod
+    runs-on: ubuntu-latest
+    needs: [dev-to-uat]
+    # This will only run after the dev-to-uat PR is merged
+    if: github.event_name == 'push' && github.ref == 'refs/heads/uat'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Setup Git Config
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+      
+      - name: Create PR from UAT to Prod
+        id: create-pr-prod
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: prod
+          branch: auto-pr-uat-to-prod
+          title: "Promote: UAT to Prod"
+          body: |
+            # Automatic Promotion: UAT to Prod
+            
+            This PR was automatically created by the CI/CD pipeline to promote changes from UAT ADF to Prod ADF.
+            
+            ## Changes included
+            
+            - ADF resources verified in UAT environment
+            
+            ## After merging
+            
+            After this PR is approved and merged, changes will be available in the Production ADF instance.
+            You may need to click "Import Changes" in the Prod ADF portal to see the latest changes.
+          labels: automated-pr, promotion, uat-to-prod
+          draft: false
+      
+      - name: PR Details
+        if: steps.create-pr-prod.outputs.pull-request-number
+        run: |
+          echo "Created PR from UAT to Prod: ${{ steps.create-pr-prod.outputs.pull-request-url }}"
+
+  # Optional: Validate ADF resources
+  validate-adf:
+    name: Validate ADF Resources
+    runs-on: ubuntu-latest
+    needs: [dev-to-uat]
+    if: success()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+      
+      - name: Install ADFUtilities
+        run: npm install -g @microsoft/azure-data-factory-utilities
+      
+      - name: Validate ADF Resources
+        run: |
+          # This is a placeholder for ADF validation
+          # You can add specific validation commands here
+          echo "Validating ADF resources..."
+          # Example:
+          # adfutu validate -i ./ -o ./validation-output
